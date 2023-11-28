@@ -16,38 +16,42 @@ DECLARE @sql varchar(max);
 DECLARE @fields nvarchar(max);
 DECLARE @field_name nvarchar(50);
 
-SELECT * FROM Temp_Json
+-- SELECT * FROM Temp_Json
 
 SELECT @json = [json] FROM Temp_Json
 SELECT @fields = fields FROM OPENJSON(@json) WITH (fields nvarchar(max) as JSON);
 
---DECLARE @test TABLE (
---	time datetime,
---	data_Time datetime,
---	max_age float,
---	data nvarchar(max)
---);
-
-PRINT @json
+--PRINT @json
+--PRINT @fields
 
 DECLARE @NewLineChar AS CHAR(2) = CHAR(13) + CHAR(10)
 DECLARE @TabChar AS CHAR(1) = CHAR(9)
 
---SELECT @fields = fields FROM OPENJSON(@json) WITH (fields nvarchar(max) as JSON)
+DECLARE @i int;
+DECLARE @length int = (SELECT COUNT(*) FROM OPENJSON(@fields));
 
---PRINT @fields
+DECLARE @fields_cs_list nvarchar(max) = '[time_stamp], [data_time_stamp], [max_age]';
+SET @i = 0;
+WHILE @i < @length
+BEGIN
+	SET @fields_cs_list = @fields_cs_list + ', [' + JSON_VALUE(@fields,CONCAT('$[',@i,']')) + ']'
+	SET @i = @i + 1
+END
+
 
 --INSERT INTO @test
 SET @sql = '
 DECLARE @json nvarchar(max);
 SELECT @json = [json] FROM Temp_Json;
+INSERT INTO [dbo].[AQ_Data] ('
+SET @i = 0;
+SET @sql = @sql + @fields_cs_list + ')
 SELECT
 	DATEADD(SS, time_stamp, ''1970-01-01 00:00:00'') AS time_stamp,
 	DATEADD(SS, data_time_stamp, ''1970-01-01 00:00:00'') AS data_time_stamp,
 	max_age,' + @NewLineChar + @TabChar
 
-DECLARE @i int = 0;
-DECLARE @length int = (SELECT COUNT(*) FROM OPENJSON(@fields));
+SET @i = 0;
 WHILE @i < @length
 BEGIN
 	SET @field_name = JSON_VALUE(@fields,CONCAT('$[',@i,']'))
@@ -61,14 +65,18 @@ FROM OPENJSON(@json)
 WITH (
 	time_stamp bigint ''$.time_stamp'',
 	data_time_stamp bigint ''$.data_time_stamp'',
-	max_age float ''$.max_age'',
+	max_age int ''$.max_age'',
 	fields nvarchar(max) AS JSON,
 	data nvarchar(max) AS JSON
 ) a
 CROSS APPLY OPENJSON(@json, ''$.data'') as fields_data
 CROSS APPLY OPENJSON(fields_data.value) as d
-GROUP BY time_stamp, data_time_stamp, max_age, fields_data.value;'
+GROUP BY time_stamp, data_time_stamp, max_age, fields_data.value
+EXCEPT
+SELECT ' + @fields_cs_list + ' FROM [dbo].[AQ_Data];'
 
 PRINT(@sql)
 
-EXEC(@sql)
+EXEC(@sql) -- Inserts into dbo.AQ_Data
+
+SELECT * FROM [dbo].[AQ_Data]

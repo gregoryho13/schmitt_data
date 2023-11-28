@@ -1,3 +1,5 @@
+-- Requires running set_sensor_table, set_aqdata_table, and compute_aqi_func
+
 -- Need to enable OLE automation procedures to make an HTTP request call from a stored procedure
 EXEC sp_configure 'show advanced options', 1
 RECONFIGURE
@@ -35,8 +37,8 @@ SET @contentType = 'application/json'
 
 IF OBJECT_ID(N'dbo.Known_Sensor_IDs', N'U') IS NOT NULL
 BEGIN
-SELECT @sensorIDs = COALESCE(@sensorIDs + ',','') + id FROM dbo.Known_Sensor_IDs WHERE id IS NOT NULL
-SET @num_sensors = (SELECT COUNT(*) FROM dbo.Known_Sensor_IDs WHERE id IS NOT NULL)
+SELECT @sensorIDs = COALESCE(@sensorIDs + ',','') + id FROM [dbo].[Known_Sensor_IDs] WHERE [id] IS NOT NULL
+SET @num_sensors = (SELECT COUNT(*) FROM [dbo].[Known_Sensor_IDs] WHERE [id] IS NOT NULL)
 END
 ELSE
 BEGIN
@@ -45,7 +47,6 @@ SET @num_sensors = 2
 END
 SET @sensorIDs = '131305,102884' -- Sample sensor IDs
 SET @num_sensors = 2
-
 
 IF OBJECT_ID(N'dbo.Known_Sensor_IDs', N'U') IS NOT NULL
 BEGIN
@@ -54,11 +55,11 @@ END
 ELSE
 BEGIN
 SET @fieldsData = -- CSV fields list
-'name,model,temperature,pressure,pm2.5' -- Sample fields to include
+'name,temperature,pressure,pm2.5' -- Sample fields to include
 --'name, model, location_type, latitude, longitude, altitude, last_seen, last_modified, date_created, confidence, humidity, temperature, pressure, pm2.5, pm2.5_atm, pm2.5_cf_1'
 END
 SET @fieldsData = -- CSV fields list
-'name,model,temperature,pressure,pm2.5' -- Sample fields to include
+'name,temperature,pressure,pm2.5' -- Sample fields to include
 
 SET @parameters = '?'
 SET @parameters = @parameters + 'show_only=' + @sensorIDs
@@ -71,7 +72,7 @@ SET @apiKey = 'B0333C6B-8CCC-11EE-8616-42010A80000B' -- Ho read API key
 SET @url = 'https://api.purpleair.com/v1/sensors' + @parameters
 
 PRINT @url;
-SELECT @col_cost = SUM(point_cost) FROM Fields WHERE include=1;
+SELECT @col_cost = SUM([point_cost]) FROM [dbo].[Fields] WHERE [include]=1;
 PRINT 'Number of sensors: ' + CONVERT(varchar(10),@num_sensors) + ', Cost of columns per sensor: '+ CONVERT(varchar(10),@col_cost) + ', Estimate cost: ' + CONVERT(varchar(10),(@col_cost * @num_sensors))
 
 -- This creates an instance of an OLE object
@@ -105,10 +106,20 @@ PRINT 'Response Text: ' + @responseText;
 EXEC @ret = sp_OADestroy @token;
 IF @ret <> 0 RAISERROR('Unable to close HTTP connection.', 10, 1);
 
-SELECT * FROM @json
+DECLARE @json_obj nvarchar(max)
+SELECT @json_obj = [json_val] FROM @json
 
-TRUNCATE TABLE dbo.Temp_Json
-INSERT INTO dbo.Temp_Json SELECT * FROM @json
+SELECT @fields = fields FROM OPENJSON(@json_obj) WITH (fields nvarchar(max) AS JSON);
+
+-- PRINT @json_obj
+
+IF (OBJECT_ID('tempdb..#Temp_Json') IS NOT NULL) DROP TABLE #Temp_Json;
+CREATE TABLE #Temp_Json (
+	json_val nvarchar(max)
+)
+
+--TRUNCATE TABLE dbo.Temp_Json
+INSERT INTO dbo.#Temp_Json SELECT * FROM @json
 --INSERT INTO dbo.Temp_Json EXEC sp_OAGetProperty @token, 'responseText'
 
 
@@ -120,36 +131,57 @@ DECLARE @NewLnChar AS CHAR(2) = CHAR(13) + CHAR(10);
 DECLARE @TabChar AS CHAR(1) = CHAR(9);
 DECLARE @field_name nvarchar(50);
 
+DECLARE @i int;
+DECLARE @length int = (SELECT COUNT(*) FROM OPENJSON(@fields));
+
+DECLARE @fields_cs_list nvarchar(max) = '[time_stamp], [data_time_stamp], [max_age]';
+SET @i = 0;
+WHILE @i < @length
+BEGIN
+	SET @fields_cs_list = @fields_cs_list + ', [' + JSON_VALUE(@fields,CONCAT('$[',@i,']')) + ']'
+	SET @i = @i + 1
+END
+
+-- Dynamic SQL to INSERT INTO dbo.AQ_Data
 SET @sql = '
-DECLARE @json nvarchar(max);
-SELECT @json = [json] FROM Temp_Json;
+DECLARE @json_obj nvarchar(max);
+SELECT @json_obj = [json_val] FROM #Temp_Json;
+INSERT INTO [dbo].[AQ_Data] ('
+SET @i = 0;
+SET @sql = @sql + @fields_cs_list + ')
 SELECT
 	DATEADD(SS, time_stamp, ''1970-01-01 00:00:00'') AS time_stamp,
 	DATEADD(SS, data_time_stamp, ''1970-01-01 00:00:00'') AS data_time_stamp,
 	max_age,' + @NewLnChar + @TabChar
 
-DECLARE @i int = 0;
-DECLARE @length int = (SELECT COUNT(*) FROM OPENJSON(@fields));
+SET @i = 0;
 WHILE @i < @length
 BEGIN
 	SET @field_name = JSON_VALUE(@fields,CONCAT('$[',@i,']'))
-	SET @sql = @sql + 'MIN(CASE JSON_VALUE(@json,CONCAT(''$.fields['',d.[key],'']'')) WHEN ''' + @field_name + ''' THEN d.value ELSE NULL END) AS [' + @field_name + ']'
+	SET @sql = @sql + 'MIN(CASE JSON_VALUE(@json_obj,CONCAT(''$.fields['',d.[key],'']'')) WHEN ''' + @field_name + ''' THEN d.value ELSE NULL END) AS [' + @field_name + ']'
 	SET @i = @i + 1;
 	IF @i <> @length
 	SET @sql = @sql + ',' + @NewLnChar + @TabChar
 END
 SET @sql = @sql + @NewLnChar + '
-FROM OPENJSON(@json)
+FROM OPENJSON(@json_obj)
 WITH (
 	time_stamp bigint ''$.time_stamp'',
 	data_time_stamp bigint ''$.data_time_stamp'',
-	max_age float ''$.max_age'',
+	max_age int ''$.max_age'',
 	fields nvarchar(max) AS JSON,
 	data nvarchar(max) AS JSON
 ) a
-CROSS APPLY OPENJSON(@json, ''$.data'') as fields_data
-CROSS APPLY OPENJSON(fields_data.value) as d
-GROUP BY time_stamp, data_time_stamp, max_age, fields_data.value;'
+CROSS APPLY OPENJSON(@json_obj, ''$.data'') AS fields_data
+CROSS APPLY OPENJSON(fields_data.value) AS d
+GROUP BY time_stamp, data_time_stamp, max_age, fields_data.value
+EXCEPT
+SELECT ' + @fields_cs_list + ' FROM [dbo].[AQ_Data];'
 
---PRINT(@sql)
-EXEC(@sql)
+PRINT(@sql)
+
+EXEC(@sql) -- Inserts into dbo.AQ_Data
+
+IF (OBJECT_ID('tempdb..#MyLocalTempTable') IS NOT NULL) DROP TABLE #MyLocalTempTable;
+
+SELECT * FROM [dbo].[AQ_Data]
