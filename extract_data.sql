@@ -182,6 +182,6 @@ PRINT(@sql)
 
 EXEC(@sql) -- Inserts into dbo.AQ_Data
 
-IF (OBJECT_ID('tempdb..#MyLocalTempTable') IS NOT NULL) DROP TABLE #MyLocalTempTable;
+IF (OBJECT_ID('tempdb..#Temp_Json') IS NOT NULL) DROP TABLE #Temp_Json;
 
 SELECT * FROM [dbo].[AQ_Data]
