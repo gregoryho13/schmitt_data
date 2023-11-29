@@ -45,12 +45,11 @@ BEGIN
 SET @sensorIDs = '131305,102884' -- Sample sensor IDs
 SET @num_sensors = 2
 END
-SET @sensorIDs = '131305,102884' -- Sample sensor IDs
-SET @num_sensors = 2
 
-IF OBJECT_ID(N'dbo.Known_Sensor_IDs', N'U') IS NOT NULL
+IF OBJECT_ID(N'dbo.Fields', N'U') IS NOT NULL
 BEGIN
 SELECT @fieldsData = COALESCE(@fieldsData + ',','') + field_name FROM dbo.Fields WHERE include=1
+PRINT 'FIELDS: ' + @fieldsData
 END
 ELSE
 BEGIN
@@ -58,8 +57,8 @@ SET @fieldsData = -- CSV fields list
 'name,temperature,pressure,pm2.5' -- Sample fields to include
 --'name, model, location_type, latitude, longitude, altitude, last_seen, last_modified, date_created, confidence, humidity, temperature, pressure, pm2.5, pm2.5_atm, pm2.5_cf_1'
 END
-SET @fieldsData = -- CSV fields list
-'name,temperature,pressure,pm2.5' -- Sample fields to include
+--SET @fieldsData = -- CSV fields list
+--'name,temperature,pressure,pm2.5' -- Sample fields to include
 
 SET @parameters = '?'
 SET @parameters = @parameters + 'show_only=' + @sensorIDs
@@ -98,7 +97,6 @@ EXEC @ret = sp_OAGetProperty @token, 'responseText', @responseText OUT;
 INSERT INTO @json (json_val) EXEC sp_OAGetProperty @token, 'responseText'
 
 -- See the Json_Table in @Json variable.
---SELECT * FROM @json
 PRINT 'Status: ' + @status + ' (' + @statusText + ')'; -- Status 402: Payment Required
 PRINT 'Response Text: ' + @responseText;
 
@@ -134,13 +132,19 @@ DECLARE @field_name nvarchar(50);
 DECLARE @i int;
 DECLARE @length int = (SELECT COUNT(*) FROM OPENJSON(@fields));
 
-DECLARE @fields_cs_list nvarchar(max) = '[time_stamp], [data_time_stamp], [max_age]';
+DECLARE @fields_cs_list nvarchar(max);
+
+SET @fields_cs_list = '[time_stamp], [data_time_stamp], [max_age]';
 SET @i = 0;
 WHILE @i < @length
 BEGIN
 	SET @fields_cs_list = @fields_cs_list + ', [' + JSON_VALUE(@fields,CONCAT('$[',@i,']')) + ']'
 	SET @i = @i + 1
 END
+
+PRINT JSON_VALUE(@fields,'$[0]')
+PRINT @length
+PRINT @fields_cs_list
 
 -- Dynamic SQL to INSERT INTO dbo.AQ_Data
 SET @sql = '
@@ -183,5 +187,7 @@ PRINT(@sql)
 EXEC(@sql) -- Inserts into dbo.AQ_Data
 
 IF (OBJECT_ID('tempdb..#Temp_Json') IS NOT NULL) DROP TABLE #Temp_Json;
+
+-- TRUNCATE TABLE [dbo].[AQ_Data]
 
 SELECT * FROM [dbo].[AQ_Data]

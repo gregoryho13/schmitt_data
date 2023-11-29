@@ -34,7 +34,7 @@ INSERT INTO Fields VALUES
 ('sensor_index',0,0),
 ('last_modified',0,1),
 ('date_created',0,1),
-('last_seen',1,1),
+('last_seen',0,1),
 ('private',0,1),
 ('is_owner',0,1),
 ('name',1,1),
@@ -154,4 +154,4 @@ END
 
 SELECT field_name, point_cost FROM Fields WHERE include=1;
 
-SELECT SUM(point_cost) AS total_pts FROM Fields WHERE include=1;
+--SELECT SUM(point_cost) AS total_pts FROM Fields WHERE include=1;
