@@ -97,7 +97,7 @@ EXEC @ret = sp_OAGetProperty @token, 'responseText', @responseText OUT;
 INSERT INTO @json (json_val) EXEC sp_OAGetProperty @token, 'responseText'
 
 -- See the Json_Table in @Json variable.
-PRINT 'Status: ' + @status + ' (' + @statusText + ')'; -- Status 402: Payment Required
+PRINT 'Response Status: ' + @status + ' (' + @statusText + ')'; -- Status 402: Payment Required
 PRINT 'Response Text: ' + @responseText;
 
 -- Close connection
@@ -142,10 +142,6 @@ BEGIN
 	SET @i = @i + 1
 END
 
-PRINT JSON_VALUE(@fields,'$[0]')
-PRINT @length
-PRINT @fields_cs_list
-
 -- Dynamic SQL to INSERT INTO dbo.AQ_Data
 SET @sql = '
 DECLARE @json_obj nvarchar(max);
@@ -182,7 +178,7 @@ GROUP BY time_stamp, data_time_stamp, max_age, fields_data.value
 EXCEPT
 SELECT ' + @fields_cs_list + ' FROM [dbo].[AQ_Data];'
 
-PRINT(@sql)
+--PRINT(@sql)
 
 EXEC(@sql) -- Inserts into dbo.AQ_Data
 
