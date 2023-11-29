@@ -73,21 +73,75 @@ BEGIN
 		[pm10.0_a] float NULL,
 		[pm10.0_b] float NULL,
 		[pm2.5_10minute] float NULL,
+		[calculated_AQI_10minute] AS [dbo].[compute_aqi]([pm2.5_10minute]), -- From https://community.purpleair.com/t/how-to-calculate-the-us-epa-pm2-5-aqi/877
+		[calculated_AQI_rating_10minute] AS CASE
+			WHEN [dbo].[compute_aqi]([pm2.5_10minute]) > 300 THEN 'hazardous'
+			WHEN [dbo].[compute_aqi]([pm2.5_10minute]) > 200 THEN 'very unhealthy'
+			WHEN [dbo].[compute_aqi]([pm2.5_10minute]) > 150 THEN 'unhealthy'
+			WHEN [dbo].[compute_aqi]([pm2.5_10minute]) > 100 THEN 'unhealthy for sensitive groups'
+			WHEN [dbo].[compute_aqi]([pm2.5_10minute]) > 50 THEN 'moderate'
+			WHEN [dbo].[compute_aqi]([pm2.5_10minute]) >= 0 THEN 'good'
+			ELSE NULL END,
 		[pm2.5_10minute_a] float NULL,
 		[pm2.5_10minute_b] float NULL,
 		[pm2.5_30minute] float NULL,
+		[calculated_AQI_30minute] AS [dbo].[compute_aqi]([pm2.5_30minute]), -- From https://community.purpleair.com/t/how-to-calculate-the-us-epa-pm2-5-aqi/877
+		[calculated_AQI_rating_30minute] AS CASE
+			WHEN [dbo].[compute_aqi]([pm2.5_30minute]) > 300 THEN 'hazardous'
+			WHEN [dbo].[compute_aqi]([pm2.5_30minute]) > 200 THEN 'very unhealthy'
+			WHEN [dbo].[compute_aqi]([pm2.5_30minute]) > 150 THEN 'unhealthy'
+			WHEN [dbo].[compute_aqi]([pm2.5_30minute]) > 100 THEN 'unhealthy for sensitive groups'
+			WHEN [dbo].[compute_aqi]([pm2.5_30minute]) > 50 THEN 'moderate'
+			WHEN [dbo].[compute_aqi]([pm2.5_30minute]) >= 0 THEN 'good'
+			ELSE NULL END,
 		[pm2.5_30minute_a] float NULL,
 		[pm2.5_30minute_b] float NULL,
 		[pm2.5_60minute] float NULL,
+		[calculated_AQI_60minute] AS [dbo].[compute_aqi]([pm2.5_60minute]), -- From https://community.purpleair.com/t/how-to-calculate-the-us-epa-pm2-5-aqi/877
+		[calculated_AQI_rating_60minute] AS CASE
+			WHEN [dbo].[compute_aqi]([pm2.5_60minute]) > 300 THEN 'hazardous'
+			WHEN [dbo].[compute_aqi]([pm2.5_60minute]) > 200 THEN 'very unhealthy'
+			WHEN [dbo].[compute_aqi]([pm2.5_60minute]) > 150 THEN 'unhealthy'
+			WHEN [dbo].[compute_aqi]([pm2.5_60minute]) > 100 THEN 'unhealthy for sensitive groups'
+			WHEN [dbo].[compute_aqi]([pm2.5_60minute]) > 50 THEN 'moderate'
+			WHEN [dbo].[compute_aqi]([pm2.5_60minute]) >= 0 THEN 'good'
+			ELSE NULL END,
 		[pm2.5_60minute_a] float NULL,
 		[pm2.5_60minute_b] float NULL,
 		[pm2.5_6hour] float NULL,
+		[calculated_AQI_6hour] AS [dbo].[compute_aqi]([pm2.5_6hour]), -- From https://community.purpleair.com/t/how-to-calculate-the-us-epa-pm2-5-aqi/877
+		[calculated_AQI_rating_6hour] AS CASE
+			WHEN [dbo].[compute_aqi]([pm2.5_6hour]) > 300 THEN 'hazardous'
+			WHEN [dbo].[compute_aqi]([pm2.5_6hour]) > 200 THEN 'very unhealthy'
+			WHEN [dbo].[compute_aqi]([pm2.5_6hour]) > 150 THEN 'unhealthy'
+			WHEN [dbo].[compute_aqi]([pm2.5_6hour]) > 100 THEN 'unhealthy for sensitive groups'
+			WHEN [dbo].[compute_aqi]([pm2.5_6hour]) > 50 THEN 'moderate'
+			WHEN [dbo].[compute_aqi]([pm2.5_6hour]) >= 0 THEN 'good'
+			ELSE NULL END,
 		[pm2.5_6hour_a] float NULL,
 		[pm2.5_6hour_b] float NULL,
 		[pm2.5_24hour] float NULL,
+		[calculated_AQI_24hour] AS [dbo].[compute_aqi]([pm2.5_24hour]), -- From https://community.purpleair.com/t/how-to-calculate-the-us-epa-pm2-5-aqi/877
+		[calculated_AQI_rating_24hour] AS CASE
+			WHEN [dbo].[compute_aqi]([pm2.5_24hour]) > 300 THEN 'hazardous'
+			WHEN [dbo].[compute_aqi]([pm2.5_24hour]) > 200 THEN 'very unhealthy'
+			WHEN [dbo].[compute_aqi]([pm2.5_24hour]) > 150 THEN 'unhealthy'
+			WHEN [dbo].[compute_aqi]([pm2.5_24hour]) > 100 THEN 'unhealthy for sensitive groups'
+			WHEN [dbo].[compute_aqi]([pm2.5_24hour]) > 50 THEN 'moderate'
+			WHEN [dbo].[compute_aqi]([pm2.5_24hour]) >= 0 THEN 'good'
+			ELSE NULL END,
 		[pm2.5_24hour_a] float NULL,
 		[pm2.5_24hour_b] float NULL,
 		[pm2.5_1week] float NULL,
+		[calculated_AQI_1week] AS [dbo].[compute_aqi]([pm2.5_1week]), -- From https://community.purpleair.com/t/how-to-calculate-the-us-epa-pm2-5-aqi/877
+		[calculated_AQI_rating_1week] AS CASE
+			WHEN [dbo].[compute_aqi]([pm2.5_1week]) > 300 THEN 'hazardous'
+			WHEN [dbo].[compute_aqi]([pm2.5_1week]) > 200 THEN 'very unhealthy'
+			WHEN [dbo].[compute_aqi]([pm2.5_1week]) > 150 THEN 'unhealthy'
+			WHEN [dbo].[compute_aqi]([pm2.5_1week]) > 100 THEN 'unhealthy for sensitive groups'
+			WHEN [dbo].[compute_aqi]([pm2.5_1week]) > 50 THEN 'moderate'
+			WHEN [dbo].[compute_aqi]([pm2.5_1week]) >= 0 THEN 'good'
+			ELSE NULL END,
 		[pm2.5_1week_a] float NULL,
 		[pm2.5_1week_b] float NULL,
 		[scattering_coefficient] float NULL,
