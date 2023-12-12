@@ -142,6 +142,7 @@ GO
 CREATE PROCEDURE [dbo].[execute_sensor_data_extraction]
 AS BEGIN
 
+-- API Key
 DECLARE @key NVARCHAR(50) = 'A4C1A5B7-6715-11EE-A8AF-42010A80000A';
 
 -- Bowie High School
