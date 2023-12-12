@@ -142,61 +142,34 @@ GO
 CREATE PROCEDURE [dbo].[execute_sensor_data_extraction]
 AS BEGIN
 
-/* 
-The purpose of this procedure is execute the "sensor_data_extraction" procedure
-along with the given sensore ID/code (@sensor_index) and api key (@apiKey).
-This is the procedure that needs to be adjusted to
-collect data for a new sensor or stop collecting data for an exiting sensor.
-
-ADD NEW SENSOR:
-
-Variables that will needs to updated:
-
-@sensor_index -> variable holding the ID/Code for a sensor
-@apiKey -> variable that holds the api key
-
-1. Copy one of the codes that starts with "EXEC".
-
-2.	On an empty line after the last "EXEC" code, types the name of the sensor 
-	with two -- in front and press the "Enter" to move down to a new line (empty line).
-
-3. Past the Copied "EXEC" code from step 1 and change the value for @sensor_index and @apiKey
-
-4. Press "Ctrl" + "A" to highlight all the lines and the "Execute" button above.
-
-DELETE AN EXISTING SENSOR:
-
-1. Delete both the name of the sensor (starts with --) and the code (starts with "EXEC"). 
-
-2. Press "Ctrl" + "A" to highlight all the lines and the "Execute" button above
-*/
+DECLARE @key NVARCHAR(50) = 'A4C1A5B7-6715-11EE-A8AF-42010A80000A';
 
 -- Bowie High School
-EXEC sensor_data_extraction @sensor_index='102840', @apiKey='A4C1A5B7-6715-11EE-A8AF-42010A80000A';
+EXEC sensor_data_extraction @sensor_index='102840', @apiKey=@key;
 
 -- Charles Flowers HS
-EXEC sensor_data_extraction @sensor_index='102884', @apiKey='A4C1A5B7-6715-11EE-A8AF-42010A80000A';
+EXEC sensor_data_extraction @sensor_index='102884', @apiKey=@key;
 
 -- ERHS lower
-EXEC sensor_data_extraction @sensor_index='102990', @apiKey='A4C1A5B7-6715-11EE-A8AF-42010A80000A';
+EXEC sensor_data_extraction @sensor_index='102990', @apiKey=@key;
 
 -- International HS at Largo
-EXEC sensor_data_extraction @sensor_index='102830', @apiKey='A4C1A5B7-6715-11EE-A8AF-42010A80000A';
+EXEC sensor_data_extraction @sensor_index='102830', @apiKey=@key;
 
 -- Oxon Hill HS
-EXEC sensor_data_extraction @sensor_index='104790', @apiKey='A4C1A5B7-6715-11EE-A8AF-42010A80000A';
+EXEC sensor_data_extraction @sensor_index='104790', @apiKey=@key;
 
 -- PGCPS_Schmidt_CenterBldg
-EXEC sensor_data_extraction @sensor_index='102898', @apiKey='A4C1A5B7-6715-11EE-A8AF-42010A80000A';
+EXEC sensor_data_extraction @sensor_index='102898', @apiKey=@key;
 
 -- Potomac High
-EXEC sensor_data_extraction @sensor_index='131305', @apiKey='A4C1A5B7-6715-11EE-A8AF-42010A80000A';
+EXEC sensor_data_extraction @sensor_index='131305', @apiKey=@key;
 
 -- William S Schmidt
-EXEC sensor_data_extraction @sensor_index='134488', @apiKey='A4C1A5B7-6715-11EE-A8AF-42010A80000A';
+EXEC sensor_data_extraction @sensor_index='134488', @apiKey=@key;
 
--- [ Replace this with the name of the new sensor. on the next line, remove (--) and update sensor_index  and apiKey  ]
--- EXEC sensor_data_extraction @sensor_index='', @apiKey='';
+-- [ Replace this with the name of the new sensor. On the next line, remove (--) and update sensor_index with a sensor code]
+-- EXEC sensor_data_extraction @sensor_index='', @apiKey=@key;
 
 END 
 GO
