@@ -1,5 +1,6 @@
 -- Requires running set_sensor_table, set_aqdata_table, and compute_aqi_func
-
+USE PurpleAir_Data;
+GO
 -- Need to enable OLE automation procedures to make an HTTP request call from a stored procedure
 EXEC sp_configure 'show advanced options', 1
 RECONFIGURE
@@ -35,10 +36,10 @@ DECLARE @json AS TABLE(json_val NVARCHAR(MAX));
 -- Set Content Type
 SET @contentType = 'application/json'
 
-IF OBJECT_ID(N'dbo.Known_Sensor_IDs', N'U') IS NOT NULL
+IF OBJECT_ID(N'purple_air.Known_Sensor_IDs', N'U') IS NOT NULL
 BEGIN
-SELECT @sensorIDs = COALESCE(@sensorIDs + ',','') + id FROM [dbo].[Known_Sensor_IDs] WHERE [id] IS NOT NULL
-SET @num_sensors = (SELECT COUNT(*) FROM [dbo].[Known_Sensor_IDs] WHERE [id] IS NOT NULL)
+SELECT @sensorIDs = COALESCE(@sensorIDs + ',','') + CONVERT(nvarchar(10),id) FROM [purple_air].[Known_Sensor_IDs] WHERE [id] IS NOT NULL
+SET @num_sensors = (SELECT COUNT(*) FROM [purple_air].[Known_Sensor_IDs] WHERE [id] IS NOT NULL)
 END
 ELSE
 BEGIN
@@ -46,9 +47,9 @@ SET @sensorIDs = '131305,102884' -- Sample sensor IDs
 SET @num_sensors = 2
 END
 
-IF OBJECT_ID(N'dbo.Fields', N'U') IS NOT NULL
+IF OBJECT_ID(N'purple_air.Fields', N'U') IS NOT NULL
 BEGIN
-SELECT @fieldsData = COALESCE(@fieldsData + ',','') + field_name FROM dbo.Fields WHERE include=1
+SELECT @fieldsData = COALESCE(@fieldsData + ',','') + field_name FROM purple_air.Fields WHERE include=1
 PRINT 'FIELDS: ' + @fieldsData
 END
 ELSE
@@ -71,7 +72,7 @@ SET @apiKey = 'B0333C6B-8CCC-11EE-8616-42010A80000B' -- Ho read API key
 SET @url = 'https://api.purpleair.com/v1/sensors' + @parameters
 
 PRINT @url;
-SELECT @col_cost = SUM([point_cost]) FROM [dbo].[Fields] WHERE [include]=1;
+SELECT @col_cost = SUM([point_cost]) FROM [purple_air].[Fields] WHERE [include]=1;
 PRINT 'Number of sensors: ' + CONVERT(varchar(10),@num_sensors) + ', Cost of columns per sensor: '+ CONVERT(varchar(10),@col_cost) + ', Estimate cost: ' + CONVERT(varchar(10),(@col_cost * @num_sensors))
 
 -- This creates an instance of an OLE object
@@ -112,13 +113,13 @@ SELECT @fields = fields FROM OPENJSON(@json_obj) WITH (fields nvarchar(max) AS J
 -- PRINT @json_obj
 
 IF (OBJECT_ID('tempdb..#Temp_Json') IS NOT NULL) DROP TABLE #Temp_Json;
-CREATE TABLE #Temp_Json (
+CREATE TABLE [purple_air].#Temp_Json (
 	json_val nvarchar(max)
 )
 
---TRUNCATE TABLE dbo.Temp_Json
-INSERT INTO dbo.#Temp_Json SELECT * FROM @json
---INSERT INTO dbo.Temp_Json EXEC sp_OAGetProperty @token, 'responseText'
+--TRUNCATE TABLE purple_air.Temp_Json
+INSERT INTO #Temp_Json SELECT * FROM @json
+--INSERT INTO purple_air.Temp_Json EXEC sp_OAGetProperty @token, 'responseText'
 
 
 -- Build dynamic SQL query
@@ -142,11 +143,11 @@ BEGIN
 	SET @i = @i + 1
 END
 
--- Dynamic SQL to INSERT INTO dbo.AQ_Data
+-- Dynamic SQL to INSERT INTO purple_air.AQ_Data
 SET @sql = '
 DECLARE @json_obj nvarchar(max);
 SELECT @json_obj = [json_val] FROM #Temp_Json;
-INSERT INTO [dbo].[AQ_Data] ('
+INSERT INTO [purple_air].[AQ_Data] ('
 SET @i = 0;
 SET @sql = @sql + @fields_cs_list + ')
 SELECT
@@ -158,7 +159,10 @@ SET @i = 0;
 WHILE @i < @length
 BEGIN
 	SET @field_name = JSON_VALUE(@fields,CONCAT('$[',@i,']'))
-	SET @sql = @sql + 'MIN(CASE JSON_VALUE(@json_obj,CONCAT(''$.fields['',d.[key],'']'')) WHEN ''' + @field_name + ''' THEN d.value ELSE NULL END) AS [' + @field_name + ']'
+	IF @field_name = 'last_modified' OR @field_name = 'date_created' OR @field_name = 'last_seen'
+		SET @sql = @sql + 'MIN(CASE JSON_VALUE(@json_obj,CONCAT(''$.fields['',d.[key],'']'')) WHEN ''' + @field_name + ''' THEN DATEADD(SS, CAST(d.value AS bigint), ''1970-01-01 00:00:00'') ELSE NULL END) AS [' + @field_name + ']'
+	ELSE
+		SET @sql = @sql + 'MIN(CASE JSON_VALUE(@json_obj,CONCAT(''$.fields['',d.[key],'']'')) WHEN ''' + @field_name + ''' THEN d.value ELSE NULL END) AS [' + @field_name + ']'
 	SET @i = @i + 1;
 	IF @i <> @length
 	SET @sql = @sql + ',' + @NewLnChar + @TabChar
@@ -176,14 +180,14 @@ CROSS APPLY OPENJSON(@json_obj, ''$.data'') AS fields_data
 CROSS APPLY OPENJSON(fields_data.value) AS d
 GROUP BY time_stamp, data_time_stamp, max_age, fields_data.value
 EXCEPT
-SELECT ' + @fields_cs_list + ' FROM [dbo].[AQ_Data];'
+SELECT ' + @fields_cs_list + ' FROM [purple_air].[AQ_Data];'
 
---PRINT(@sql)
+PRINT(@sql)
 
-EXEC(@sql) -- Inserts into dbo.AQ_Data
+EXEC(@sql) -- Inserts into purple_air.AQ_Data
 
 IF (OBJECT_ID('tempdb..#Temp_Json') IS NOT NULL) DROP TABLE #Temp_Json;
 
--- TRUNCATE TABLE [dbo].[AQ_Data]
+-- TRUNCATE TABLE [purple_air].[AQ_Data]
 
-SELECT * FROM [dbo].[AQ_Data]
+SELECT * FROM [purple_air].[AQ_Data]
